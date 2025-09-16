@@ -1,18 +1,22 @@
 // firebaseConfig.js
 import { initializeApp } from "firebase/app";
 import { getAuth } from "firebase/auth";
+import { getFirestore } from "firebase/firestore";
 
+// 👇 Reemplaza con la configuración de tu proyecto Firebase
 const firebaseConfig = {
-  apiKey: "AIzaSyAYOwK9rtjYCesL7MAbOrjYc4BB1NTVXZ0",
-  authDomain: "memobiblia-fbae9.firebaseapp.com",
-  projectId: "memobiblia-fbae9",
-  storageBucket: "memobiblia-fbae9.firebasestorage.app",
-  messagingSenderId: "759670163986",
-  appId: "1:759670163986:web:1cabd17288134492ec66cb"
+  apiKey: "AIzaSyArN9WPd-GJ4gCSTE3VyV4iABeLEE6q-rk",
+  authDomain: "memobiblia-c9bff.firebaseapp.com",
+  projectId: "memobiblia-c9bff",
+  storageBucket: "memobiblia-c9bff.firebasestorage.app",
+  messagingSenderId: "103130188078",
+  appId: "1:103130188078:web:6a818ca086c387217092bf"
 };
 
-// Inicializar Firebase
 const app = initializeApp(firebaseConfig);
 
-// Exportar Auth
+// Autenticación
 export const auth = getAuth(app);
+
+// Firestore
+export const db = getFirestore(app);
