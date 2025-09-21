@@ -2,46 +2,60 @@ import { router } from "expo-router";
 import { signOut } from "firebase/auth";
 import { doc, getDoc } from "firebase/firestore";
 import React, { useEffect, useState } from "react";
-import { Text, TouchableOpacity, View } from "react-native";
+import { Alert, Text, TouchableOpacity, View } from "react-native";
 import { auth, db } from "../firebaseConfig";
 
-export default function HomeScreen() {
-  const [nombre, setNombre] = useState("");
-  const [apellido, setApellido] = useState("");
+export default function Home() {
+  const [userName, setUserName] = useState<string | null>(null);
 
   useEffect(() => {
-    const fetchUserData = async () => {
-      if (auth.currentUser) {
-        const userDoc = await getDoc(doc(db, "users", auth.currentUser.uid));
-        if (userDoc.exists()) {
-          const data = userDoc.data();
-          setNombre(data.nombre);
-          setApellido(data.apellido);
+    const loadUserData = async () => {
+      try {
+        const user = auth.currentUser;
+        if (user) {
+          const docRef = doc(db, "users", user.uid);
+          const docSnap = await getDoc(docRef);
+          if (docSnap.exists()) {
+            const data = docSnap.data();
+            setUserName(`${data.firstName} ${data.lastName}`);
+          } else {
+            setUserName("Usuario");
+          }
         }
+      } catch (error) {
+        console.log("❌ Error al cargar usuario:", error);
+        setUserName("Usuario");
       }
     };
-    fetchUserData();
+
+    loadUserData();
   }, []);
 
   const handleLogout = async () => {
-    await signOut(auth);
-    router.replace("/");
+    try {
+      await signOut(auth);
+      router.replace("/login");
+    } catch (error) {
+      Alert.alert("❌ Error", "No se pudo cerrar la sesión");
+    }
   };
 
   return (
     <View style={{ flex: 1, justifyContent: "center", alignItems: "center" }}>
-      <Text style={{ fontSize: 24, fontWeight: "bold", marginBottom: 20 }}>
-        👋 Bienvenid@ {nombre} {apellido}
+      <Text style={{ fontSize: 26, fontWeight: "bold", marginBottom: 20 }}>
+        {userName ? `Bienvenido, ${userName} 👋` : "Cargando..."}
       </Text>
+
       <TouchableOpacity
         onPress={handleLogout}
         style={{
-          backgroundColor: "#e74c3c",
+          backgroundColor: "#f44336",
           padding: 15,
           borderRadius: 8,
+          marginTop: 20,
         }}
       >
-        <Text style={{ color: "white", fontSize: 18 }}>Cerrar Sesión</Text>
+        <Text style={{ color: "#fff", fontWeight: "bold" }}>Cerrar sesión</Text>
       </TouchableOpacity>
     </View>
   );
