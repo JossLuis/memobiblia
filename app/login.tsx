@@ -1,5 +1,8 @@
 import { router } from "expo-router";
-import { signInWithEmailAndPassword } from "firebase/auth";
+import {
+  sendPasswordResetEmail,
+  signInWithEmailAndPassword,
+} from "firebase/auth";
 import React, { useState } from "react";
 import {
   ActivityIndicator,
@@ -7,33 +10,35 @@ import {
   Text,
   TextInput,
   TouchableOpacity,
-  View
+  View,
 } from "react-native";
 import { auth } from "../firebaseConfig";
 
 export default function Login() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
-  const [error, setError] = useState(""); //  trạng thái mới cho lỗi
-  const [loading, setLoading] = useState(false); // trạng thái cho tải
+  const [error, setError] = useState("");
+  // 🟢 Nuevo estado para el mensaje de éxito
+  const [successMessage, setSuccessMessage] = useState("");
+
+  const [loginLoading, setLoginLoading] = useState(false);
+  const [resetLoading, setResetLoading] = useState(false);
 
   const handleLogin = async () => {
-    // Xóa lỗi cũ và bắt đầu tải
+    // Limpiar ambos mensajes al iniciar una acción
     setError("");
+    setSuccessMessage("");
     if (!email || !password) {
       setError("Por favor, ingresa tu correo y contraseña.");
       return;
     }
-    setLoading(true);
+    setLoginLoading(true);
 
     try {
       await signInWithEmailAndPassword(auth, email, password);
-      // không cần cảnh báo ở đây, chuyển hướng trực tiếp
       router.replace("/home");
     } catch (err: any) {
-      console.log("❌ Lỗi đăng nhập:", err);
-      let mensaje = "Ocurrió un error inesperado. Intenta nuevamente.";
-
+      let mensaje = "Ocurrió un error inesperado.";
       switch (err.code) {
         case "auth/user-not-found":
         case "auth/wrong-password":
@@ -46,8 +51,39 @@ export default function Login() {
       }
       setError(mensaje);
     } finally {
-      setLoading(false); // Dừng tải
+      setLoginLoading(false);
     }
+  };
+
+  const handleForgotPassword = async () => {
+    // Limpiar ambos mensajes
+    setError("");
+    setSuccessMessage("");
+    if (!email) {
+      setError("Por favor, ingresa tu correo para restablecer la contraseña.");
+      return;
+    }
+    setResetLoading(true);
+
+    try {
+      await sendPasswordResetEmail(auth, email);
+      // ✅ Establecer el mensaje de éxito en lugar de la alerta
+      setSuccessMessage(
+        `Recibirás un correo en ${email} para restablecer tu contraseña.`
+      );
+    } catch (error: any) {
+      setError("No pudimos enviar el correo. Verifica que esté bien escrito.");
+      console.log("❌ Error en reset:", error);
+    } finally {
+      setResetLoading(false);
+    }
+  };
+
+  // Función para limpiar mensajes cuando el usuario escribe
+  const handleTextChange = (setter: Function, value: string) => {
+    setter(value);
+    setError("");
+    setSuccessMessage("");
   };
 
   return (
@@ -57,49 +93,60 @@ export default function Login() {
       <TextInput
         placeholder="Correo electrónico"
         value={email}
-        onChangeText={(text) => {
-          setEmail(text);
-          setError(""); // Xóa lỗi khi người dùng gõ
-        }}
+        onChangeText={(text) => handleTextChange(setEmail, text)}
         autoCapitalize="none"
         keyboardType="email-address"
         style={[
           styles.input,
-          error.includes("correo") && styles.inputError, // Thay đổi viền nếu có lỗi
+          error.toLowerCase().includes("correo") && styles.inputError,
         ]}
       />
 
       <TextInput
         placeholder="Contraseña"
         value={password}
-        onChangeText={(text) => {
-          setPassword(text);
-          setError(""); // Xóa lỗi khi người dùng gõ
-        }}
+        onChangeText={(text) => handleTextChange(setPassword, text)}
         secureTextEntry
         style={[
           styles.input,
-          error.includes("contraseña") && styles.inputError, // Thay đổi viền nếu có lỗi
+          error.toLowerCase().includes("contraseña") && styles.inputError,
         ]}
       />
 
-      {/* Hiển thị lỗi */}
+      {/* Renderizado condicional de mensajes */}
       {error ? <Text style={styles.errorText}>{error}</Text> : null}
+      {successMessage ? (
+        <Text style={styles.successText}>{successMessage}</Text>
+      ) : null}
 
-      {/* Nút đăng nhập với chỉ báo tải */}
       <TouchableOpacity
         onPress={handleLogin}
         style={styles.button}
-        disabled={loading}
+        disabled={loginLoading || resetLoading}
       >
-        {loading ? (
+        {loginLoading ? (
           <ActivityIndicator color="#fff" />
         ) : (
           <Text style={styles.buttonText}>Iniciar Sesión</Text>
         )}
       </TouchableOpacity>
 
-      <TouchableOpacity onPress={() => router.push("/register")}>
+      <TouchableOpacity
+        onPress={handleForgotPassword}
+        disabled={loginLoading || resetLoading}
+        style={styles.forgotPasswordButton}
+      >
+        {resetLoading ? (
+          <ActivityIndicator color="#4A90E2" />
+        ) : (
+          <Text style={styles.forgotPasswordText}>¿Olvidaste tu contraseña?</Text>
+        )}
+      </TouchableOpacity>
+
+      <TouchableOpacity
+        onPress={() => router.push("/register")}
+        disabled={loginLoading || resetLoading}
+      >
         <Text style={styles.linkText}>
           ¿No tienes cuenta? Regístrate aquí
         </Text>
@@ -108,7 +155,6 @@ export default function Login() {
   );
 }
 
-// 💅 Thêm StyleSheet để có mã sạch hơn
 const styles = StyleSheet.create({
   container: {
     flex: 1,
@@ -131,7 +177,7 @@ const styles = StyleSheet.create({
     fontSize: 16,
   },
   inputError: {
-    borderColor: "red", // Viền đỏ cho lỗi
+    borderColor: "red",
   },
   button: {
     backgroundColor: "#4CAF50",
@@ -148,6 +194,21 @@ const styles = StyleSheet.create({
     color: "red",
     textAlign: "center",
     marginBottom: 12,
+  },
+  // 🎨 Nuevo estilo para el mensaje de éxito
+  successText: {
+    color: "green",
+    textAlign: "center",
+    marginBottom: 12,
+  },
+  forgotPasswordButton: {
+    marginTop: 15,
+    padding: 5,
+  },
+  forgotPasswordText: {
+    color: "#4A90E2",
+    textAlign: "center",
+    fontSize: 14,
   },
   linkText: {
     marginTop: 20,
