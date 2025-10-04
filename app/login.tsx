@@ -1,116 +1,157 @@
 import { router } from "expo-router";
-import { sendPasswordResetEmail, signInWithEmailAndPassword } from "firebase/auth";
+import { signInWithEmailAndPassword } from "firebase/auth";
 import React, { useState } from "react";
-import { Alert, Text, TextInput, TouchableOpacity, View } from "react-native";
+import {
+  ActivityIndicator,
+  StyleSheet,
+  Text,
+  TextInput,
+  TouchableOpacity,
+  View
+} from "react-native";
 import { auth } from "../firebaseConfig";
 
 export default function Login() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [error, setError] = useState(""); //  trạng thái mới cho lỗi
+  const [loading, setLoading] = useState(false); // trạng thái cho tải
 
-  // 🔹 Inicio de sesión
   const handleLogin = async () => {
+    // Xóa lỗi cũ và bắt đầu tải
+    setError("");
+    if (!email || !password) {
+      setError("Por favor, ingresa tu correo y contraseña.");
+      return;
+    }
+    setLoading(true);
+
     try {
       await signInWithEmailAndPassword(auth, email, password);
-      Alert.alert("✅ Bienvenido", `Has iniciado sesión como ${email}`);
+      // không cần cảnh báo ở đây, chuyển hướng trực tiếp
       router.replace("/home");
-    } catch (error: any) {
-      console.log("❌ Error de login:", error);
-
+    } catch (err: any) {
+      console.log("❌ Lỗi đăng nhập:", err);
       let mensaje = "Ocurrió un error inesperado. Intenta nuevamente.";
 
-      switch (error.code) {
+      switch (err.code) {
         case "auth/user-not-found":
-          mensaje = "No existe una cuenta con este correo electrónico.";
-          break;
         case "auth/wrong-password":
-          mensaje = "La contraseña es incorrecta.";
+        case "auth/invalid-credential":
+          mensaje = "El correo electrónico o la contraseña son incorrectos.";
           break;
         case "auth/invalid-email":
           mensaje = "El correo electrónico no tiene un formato válido.";
           break;
-        case "auth/invalid-credential":
-          mensaje = "Correo o contraseña incorrectos.";
-          break;
       }
-
-      Alert.alert("❌ Error al iniciar sesión", mensaje);
-    }
-  };
-
-  // 🔹 Recuperación de contraseña
-  const handleForgotPassword = async () => {
-    if (!email) {
-      Alert.alert(
-        "⚠️ Ingresa tu correo",
-        "Por favor escribe tu correo electrónico para recuperar tu contraseña."
-      );
-      return;
-    }
-
-    try {
-      await sendPasswordResetEmail(auth, email);
-      Alert.alert(
-        "📩 Revisa tu correo",
-        "Te hemos enviado un enlace para restablecer tu contraseña."
-      );
-    } catch (error: any) {
-      console.log("❌ Error en reset:", error);
-      Alert.alert("❌ Error", "No pudimos enviar el correo de recuperación.");
+      setError(mensaje);
+    } finally {
+      setLoading(false); // Dừng tải
     }
   };
 
   return (
-    <View style={{ flex: 1, justifyContent: "center", padding: 20 }}>
-      <Text style={{ fontSize: 24, fontWeight: "bold", marginBottom: 20 }}>
-        Iniciar Sesión
-      </Text>
+    <View style={styles.container}>
+      <Text style={styles.title}>Iniciar Sesión</Text>
 
-      {/* Correo */}
       <TextInput
         placeholder="Correo electrónico"
         value={email}
-        onChangeText={setEmail}
+        onChangeText={(text) => {
+          setEmail(text);
+          setError(""); // Xóa lỗi khi người dùng gõ
+        }}
         autoCapitalize="none"
         keyboardType="email-address"
-        style={{ borderWidth: 1, padding: 10, marginBottom: 10, borderRadius: 6 }}
+        style={[
+          styles.input,
+          error.includes("correo") && styles.inputError, // Thay đổi viền nếu có lỗi
+        ]}
       />
 
-      {/* Contraseña */}
       <TextInput
         placeholder="Contraseña"
         value={password}
-        onChangeText={setPassword}
+        onChangeText={(text) => {
+          setPassword(text);
+          setError(""); // Xóa lỗi khi người dùng gõ
+        }}
         secureTextEntry
-        style={{ borderWidth: 1, padding: 10, marginBottom: 20, borderRadius: 6 }}
+        style={[
+          styles.input,
+          error.includes("contraseña") && styles.inputError, // Thay đổi viền nếu có lỗi
+        ]}
       />
 
-      {/* Botón Login */}
+      {/* Hiển thị lỗi */}
+      {error ? <Text style={styles.errorText}>{error}</Text> : null}
+
+      {/* Nút đăng nhập với chỉ báo tải */}
       <TouchableOpacity
         onPress={handleLogin}
-        style={{
-          backgroundColor: "#4CAF50",
-          padding: 15,
-          borderRadius: 8,
-          alignItems: "center",
-        }}
+        style={styles.button}
+        disabled={loading}
       >
-        <Text style={{ color: "#fff", fontWeight: "bold" }}>Iniciar Sesión</Text>
+        {loading ? (
+          <ActivityIndicator color="#fff" />
+        ) : (
+          <Text style={styles.buttonText}>Iniciar Sesión</Text>
+        )}
       </TouchableOpacity>
 
-      {/* Olvidé mi contraseña */}
-      <TouchableOpacity onPress={handleForgotPassword}>
-        <Text style={{ marginTop: 15, color: "red", textAlign: "center" }}>
-          ¿Olvidaste tu contraseña?
-        </Text>
-      </TouchableOpacity>
-
-      {/* Ir a Registro */}
       <TouchableOpacity onPress={() => router.push("/register")}>
-        <Text style={{ marginTop: 20, color: "blue", textAlign: "center" }}>
+        <Text style={styles.linkText}>
           ¿No tienes cuenta? Regístrate aquí
         </Text>
       </TouchableOpacity>
     </View>
   );
 }
+
+// 💅 Thêm StyleSheet để có mã sạch hơn
+const styles = StyleSheet.create({
+  container: {
+    flex: 1,
+    justifyContent: "center",
+    padding: 20,
+    backgroundColor: "#fff",
+  },
+  title: {
+    fontSize: 28,
+    fontWeight: "bold",
+    marginBottom: 24,
+    textAlign: "center",
+  },
+  input: {
+    borderWidth: 1,
+    borderColor: "#ccc",
+    padding: 12,
+    marginBottom: 16,
+    borderRadius: 8,
+    fontSize: 16,
+  },
+  inputError: {
+    borderColor: "red", // Viền đỏ cho lỗi
+  },
+  button: {
+    backgroundColor: "#4CAF50",
+    padding: 15,
+    borderRadius: 8,
+    alignItems: "center",
+  },
+  buttonText: {
+    color: "#fff",
+    fontWeight: "bold",
+    fontSize: 16,
+  },
+  errorText: {
+    color: "red",
+    textAlign: "center",
+    marginBottom: 12,
+  },
+  linkText: {
+    marginTop: 20,
+    color: "blue",
+    textAlign: "center",
+  },
+});

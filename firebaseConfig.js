@@ -1,9 +1,11 @@
 // firebaseConfig.js
-import { initializeApp } from "firebase/app";
-import { getAuth } from "firebase/auth";
-import { getFirestore } from "firebase/firestore";
 
-// 👇 Reemplaza con la configuración de tu proyecto Firebase
+import { getApp, getApps, initializeApp } from "firebase/app";
+import { getAuth } from "firebase/auth"; // <- Solo importamos getAuth
+import { getFirestore } from "firebase/firestore";
+// No es necesario importar initializeAuth o getReactNativePersistence
+
+// Tu configuración de Firebase
 const firebaseConfig = {
   apiKey: "AIzaSyArN9WPd-GJ4gCSTE3VyV4iABeLEE6q-rk",
   authDomain: "memobiblia-c9bff.firebaseapp.com",
@@ -13,10 +15,10 @@ const firebaseConfig = {
   appId: "1:103130188078:web:6a818ca086c387217092bf"
 };
 
-const app = initializeApp(firebaseConfig);
+// Inicialización segura
+const app = !getApps().length ? initializeApp(firebaseConfig) : getApp();
+const auth = getAuth(app); // <- ESTE ES EL CAMBIO CLAVE. Simple y automático.
+const db = getFirestore(app);
 
-// Autenticación
-export const auth = getAuth(app);
+export { app, auth, db };
 
-// Firestore
-export const db = getFirestore(app);
